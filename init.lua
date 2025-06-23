@@ -190,6 +190,21 @@ vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right win
 vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
 vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
 
+vim.keymap.set('n', '<leader>tf', '<cmd>ToggleTerm direction=float<cr>', { desc = 'Toggle floating terminal' })
+vim.keymap.set('n', '<leader>th', '<cmd>ToggleTerm direction=horizontal<cr>', { desc = 'Toggle horizontal terminal' })
+vim.keymap.set('n', '<leader>tv', '<cmd>ToggleTerm direction=vertical size=80<cr>', { desc = 'Toggle vertical terminal' })
+
+-- Terminal mode keymaps
+function _G.set_terminal_keymaps()
+  local opts = { buffer = 0 }
+  vim.keymap.set('t', '<esc>', [[<C-\><C-n>]], opts)
+  vim.keymap.set('t', '<C-h>', [[<Cmd>wincmd h<CR>]], opts)
+  vim.keymap.set('t', '<C-j>', [[<Cmd>wincmd j<CR>]], opts)
+  vim.keymap.set('t', '<C-k>', [[<Cmd>wincmd k<CR>]], opts)
+  vim.keymap.set('t', '<C-l>', [[<Cmd>wincmd l<CR>]], opts)
+end
+
+vim.cmd 'autocmd! TermOpen term://* lua set_terminal_keymaps()'
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
 
@@ -230,8 +245,145 @@ vim.opt.rtp:prepend(lazypath)
 require('lazy').setup({
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
   'tpope/vim-sleuth', -- Detect tabstop and shiftwidth automatically
+  {
+    'nvim-tree/nvim-tree.lua',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    keys = {
+      { '\\', ':NvimTreeToggle<CR>', desc = 'Toggle file explorer' },
+    },
+    config = function()
+      require('nvim-tree').setup {
+        view = {
+          width = 30,
+        },
+        on_attach = function(bufnr)
+          local api = require 'nvim-tree.api'
 
-  -- NOTE: Plugins can also be added by using a table,
+          -- Default keymaps
+          local function opts(desc)
+            return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
+          end
+
+          -- Essential default mappings
+          vim.keymap.set('n', '<CR>', api.node.open.edit, opts 'Open')
+          vim.keymap.set('n', '<C-e>', api.node.open.replace_tree_buffer, opts 'Open: In Place')
+
+          -- Tab support
+          vim.keymap.set('n', '<C-t>', api.node.open.tab, opts 'Open: New Tab')
+          vim.keymap.set('n', 't', api.node.open.tab, opts 'Open: New Tab')
+        end,
+      }
+    end,
+  },
+
+  {
+    'ray-x/lsp_signature.nvim',
+    event = 'InsertEnter',
+    opts = {
+      bind = true,
+      handler_opts = {
+        border = 'rounded',
+      },
+    },
+    config = function(_, opts)
+      require('lsp_signature').setup(opts)
+    end,
+    -- cfg options
+  },
+  {
+    'akinsho/toggleterm.nvim',
+    version = '*',
+    config = function()
+      require('toggleterm').setup {
+        size = 20,
+        open_mapping = [[<c-\>]],
+        hide_numbers = true,
+        shade_filetypes = {},
+        shade_terminals = true,
+        shading_factor = 2,
+        start_in_insert = true,
+        insert_mappings = true,
+        persist_size = true,
+        direction = 'float',
+        close_on_exit = true,
+        shell = vim.o.shell,
+        float_opts = {
+          border = 'curved',
+          winblend = 3,
+          highlights = {
+            border = 'Normal',
+            background = 'Normal',
+          },
+        },
+      }
+    end,
+  },
+  {
+    'kdheepak/lazygit.nvim',
+    lazy = false,
+    cmd = {
+      'LazyGit',
+      'LazyGitConfig',
+      'LazyGitCurrentFile',
+      'LazyGitFilter',
+      'LazyGitFilterCurrentFile',
+    },
+    -- optional for floating window border decoration
+    dependencies = {
+      'nvim-telescope/telescope.nvim',
+      'nvim-lua/plenary.nvim',
+    },
+    config = function()
+      require('telescope').load_extension 'lazygit'
+    end,
+  },
+  {
+    'lervag/vimtex',
+    lazy = false,
+    init = function()
+      vim.g.vimtex_syntax_enabled = 1
+      vim.g.vimtex_view_method = 'zathura'
+
+      -- Make it behave more like Overleaf
+      vim.g.vimtex_compiler_method = 'latexmk'
+      vim.g.vimtex_compiler_latexmk = {
+        build_dir = '',
+        callback = 1,
+        continuous = 1,
+        executable = 'latexmk',
+        options = {
+          '-verbose',
+          '-file-line-error',
+          '-synctex=1',
+          '-interaction=nonstopmode', -- Don't stop for errors
+          '-pdf',
+        },
+      }
+
+      -- Suppress warnings like Overleaf
+      vim.g.vimtex_quickfix_ignore_filters = {
+        'Overfull \\hbox',
+        'Underfull \\hbox',
+        'Package hyperref Warning',
+        'Package lipsum Warning',
+        'LaTeX Warning: Reference.*undefined',
+        'LaTeX Warning: There were undefined references',
+        'LaTeX Warning: Label(s) may have changed',
+        'Package rerunfilecheck Warning',
+        'Package biblatex Warning: Please rerun LaTeX',
+      }
+    end,
+  },
+  -- {
+  --   'lervag/vimtex',
+  --   lazy = false, -- we don't want to lazy load VimTeX
+  --   -- tag = "v2.15", -- uncomment to pin to a specific release
+  --   init = function()
+  --     -- VimTeX configuration goes here, e.g.
+  --     vim.g.vimtex_view_method = 'zathura'
+  --   end,
+  -- },
+  -- -- NOTE: Plugins can also be added by using a table,
   -- with the first argument being the link and the following
   -- keys can be used to configure plugin behavior/loading/etc.
   --
@@ -255,7 +407,12 @@ require('lazy').setup({
       },
     },
   },
-
+  {
+    'numToStr/Comment.nvim',
+    opts = {
+      -- add any options here
+    },
+  },
   -- NOTE: Plugins can also be configured to run Lua code when they are loaded.
   --
   -- This is often very useful to both group configuration, as well as handle
@@ -665,7 +822,6 @@ require('lazy').setup({
       }
     end,
   },
-
   { -- Autoformat
     'stevearc/conform.nvim',
     event = { 'BufWritePre' },
@@ -683,10 +839,8 @@ require('lazy').setup({
     opts = {
       notify_on_error = false,
       format_on_save = function(bufnr)
-        -- Disable "format_on_save lsp_fallback" for languages that don't
-        -- have a well standardized coding style. You can add additional
-        -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true }
+        -- Re-enable C++ formatting since we're configuring it properly
+        local disable_filetypes = { c = true }
         return {
           timeout_ms = 500,
           lsp_fallback = not disable_filetypes[vim.bo[bufnr].filetype],
@@ -694,15 +848,22 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
+        cpp = { 'clang_format' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
       },
+      formatters = {
+        clang_format = {
+          prepend_args = {
+            '--style={IndentWidth: 4, UseTab: Never, BreakBeforeBraces: Attach, AllowShortIfStatementsOnASingleLine: false, IndentCaseLabels: false, ColumnLimit: 120}',
+          },
+        },
+      },
     },
   },
-
   { -- Autocompletion
     'hrsh7th/nvim-cmp',
     event = 'InsertEnter',
@@ -946,6 +1107,6 @@ require('lazy').setup({
     },
   },
 })
-
+vim.opt.clipboard = 'unnamedplus'
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
